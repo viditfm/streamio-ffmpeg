@@ -1,76 +1,90 @@
 require 'time'
+require 'json'
 
 module FFMPEG
   class Movie
-    attr_reader :path, :duration, :time, :bitrate, :rotation, :creation_time
-    attr_reader :video_stream, :video_codec, :video_bitrate, :colorspace, :resolution, :sar, :dar
-    attr_reader :audio_stream, :audio_codec, :audio_bitrate, :audio_sample_rate
-    attr_reader :container
+    attr_reader :path, :duration, :time, :bitrate, :rotation, :creation_time, :size
+    attr_reader :video_codec, :video_bitrate, :colorspace, :width, :height, :sar, :dar, :frame_rate
+    attr_reader :audio_codec, :audio_bitrate, :audio_sample_rate, :audio_channels
+    attr_reader :container, :error_code, :error_message
 
     def initialize(path)
       raise Errno::ENOENT, "the file '#{path}' does not exist" unless File.exists?(path)
 
       @path = path
 
-      # ffmpeg will output to stderr
-      command = "#{FFMPEG.ffprobe_binary} -i #{Shellwords.escape(path)}"
-      output = Open3.popen3(command) { |stdin, stdout, stderr| stderr.read }
-
+      command = "#{FFMPEG.ffprobe_binary} -v quiet -of json -show_format -show_streams -show_error #{Shellwords.escape(path)}"
+      output = `#{command}`
       fix_encoding(output)
+    
+      movie_info = JSON.parse(output)
 
-      output[/Input \#\d+\,\s*(\S+),\s*from/]
-      @container = $1
-
-      output[/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/]
-      @duration = ($1.to_i*60*60) + ($2.to_i*60) + $3.to_f
-
-      output[/start: (\d*\.\d*)/]
-      @time = $1 ? $1.to_f : 0.0
-
-      output[/creation_time {1,}: {1,}(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/]
-      @creation_time = $1 ? Time.parse("#{$1}") : nil
-
-      output[/bitrate: (\d*)/]
-      @bitrate = $1 ? $1.to_i : nil
-
-      output[/rotate\ {1,}:\ {1,}(\d*)/]
-      @rotation = $1 ? $1.to_i : nil
-
-      output[/Video:\ (.*)/]
-      @video_stream = $1
-
-      output[/Audio:\ (.*)/]
-      @audio_stream = $1
-
-      if video_stream
-        @video_codec, @colorspace, resolution, video_bitrate = video_stream.split(/\s?,(?![^,\)]+\))\s?/)
-        @video_bitrate = video_bitrate =~ %r(\A(\d+) kb/s\Z) ? $1.to_i : nil
-        @resolution = resolution.split(" ").first rescue nil # get rid of [PAR 1:1 DAR 16:9]
-        @sar = $1 if video_stream[/SAR (\d+:\d+)/]
-        @dar = $1 if video_stream[/DAR (\d+:\d+)/]
+      if movie_info['error']
+        @error_code = movie_info['error']['code']
+        @error_message = movie_info['error']['message']
+        return
       end
 
-      if audio_stream
-        @audio_codec, audio_sample_rate, @audio_channels, unused, audio_bitrate = audio_stream.split(/\s?,\s?/)
-        @audio_bitrate = audio_bitrate =~ %r(\A(\d+) kb/s\Z) ? $1.to_i : nil
-        @audio_sample_rate = audio_sample_rate[/\d*/].to_i
+      format_info = movie_info['format']
+      @size = format_info['size'].to_i
+      @container = format_info['format_name']
+      @duration = format_info['duration'].to_f.round(2)
+      @time = format_info['start_time'].to_f 
+
+      if format_info['tags'] && format_info['tags']['creation_time']
+        @creation_time = Time.parse(format_info['tags']['creation_time'])
       end
 
-      @invalid = true if @video_stream.to_s.empty? && @audio_stream.to_s.empty?
-      @invalid = true if output.include?("is not supported")
-      @invalid = true if output.include?("Operation not permitted")
+      @bitrate = format_info['bit_rate'] ? (format_info['bit_rate'].to_i / 1000) : nil
+
+      video_info = movie_info['streams'].select {|s| s['codec_type'] == 'video' }.first
+      audio_info = movie_info['streams'].select {|s| s['codec_type'] == 'audio' }.first
+
+      if video_info
+        @video_codec = video_info['codec_name']
+        @colorspace = video_info['pix_fmt']
+        @video_bitrate = video_info['bit_rate'] ? (video_info['bit_rate'].to_i / 1000) : nil
+        @width = video_info['width']
+        @height = video_info['height']
+        @sar = video_info['sample_aspect_ratio']
+        @dar = video_info['display_aspect_ratio']
+
+        if video_info['tags'] && video_info['tags']['rotate']
+          @rotation = video_info['tags']['rotate'].to_i
+        end
+
+        if (average_frame_rate = video_info['avg_frame_rate'])
+          frames, seconds = video_info['avg_frame_rate'].split('/')
+          @frame_rate = (frames.to_f / seconds.to_f).round(2)
+        end
+      end
+
+      if audio_info
+        @audio_codec = audio_info['codec_name']
+        @audio_channels = audio_info['channels']
+        @audio_bitrate = audio_info['bit_rate'] ? (audio_info['bit_rate'].to_i / 1000) : nil
+        @audio_sample_rate = audio_info['sample_rate'] ? audio_info['sample_rate'].to_i : nil
+      end
     end
 
     def valid?
-      not @invalid
+      !(@error_code || @error_message) 
     end
 
-    def width
-      resolution.split("x")[0].to_i rescue nil
+    def has_video?
+      !!@video_codec
     end
 
-    def height
-      resolution.split("x")[1].to_i rescue nil
+    def has_audio?
+      !!@audio_codec
+    end
+
+    def duration
+      @duration || 0
+    end
+
+    def resolution
+      (@width && @height) ? [@width, @height].join('x') : nil 
     end
 
     def calculated_aspect_ratio
@@ -79,23 +93,6 @@ module FFMPEG
 
     def calculated_pixel_aspect_ratio
       aspect_from_sar || 1
-    end
-
-    def size
-      File.size(@path)
-    end
-
-    def audio_channels
-      return nil unless @audio_channels
-      return @audio_channels[/\d*/].to_i if @audio_channels["channels"]
-      return 1 if @audio_channels["mono"]
-      return 2 if @audio_channels["stereo"]
-      return 6 if @audio_channels["5.1"]
-    end
-
-    def frame_rate
-      return nil unless video_stream
-      video_stream[/(\d*\.?\d*)\s?fps/] ? $1.to_f : nil
     end
 
     def transcode(output_file, options = EncodingOptions.new, transcoder_options = {}, &block)

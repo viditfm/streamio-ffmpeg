@@ -86,17 +86,12 @@ module FFMPEG
 
       context "given an impossible DAR" do
         before(:all) do
-          fake_output = StringIO.new(File.read("#{fixture_path}/outputs/file_with_weird_dar.txt"))
-          Open3.stub(:popen3).and_yield(nil,nil,fake_output)
-          @movie = Movie.new(__FILE__)
-        end
-
-        it "should parse the DAR" do
-          @movie.dar.should == "0:1"
+          @movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
+          @movie.instance_eval { @dar = '0:1' }
         end
 
         it "should calulate using width and height instead" do
-          @movie.calculated_aspect_ratio.to_s[0..14].should == "1.7777777777777" # substringed to be 1.9 compatible
+          @movie.calculated_aspect_ratio.to_s[0..14].should == "1.3333333333333" # substringed to be 1.9 compatible
         end
       end
 
@@ -116,13 +111,8 @@ module FFMPEG
 
       context "given an impossible SAR" do
         before(:all) do
-          fake_output = StringIO.new(File.read("#{fixture_path}/outputs/file_with_weird_sar.txt"))
-          Open3.stub(:popen3).and_yield(nil,nil,fake_output)
-          @movie = Movie.new(__FILE__)
-        end
-
-        it "should parse the SAR" do
-          @movie.sar.should == "0:1"
+          @movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
+          @movie.instance_eval { @sar = '0:1' }
         end
 
         it "should using square SAR, 1.0 instead" do
@@ -131,22 +121,10 @@ module FFMPEG
       end
 
       context "given a file with ISO-8859-1 characters in output" do
-        it "should not crash" do
+        xit "should not crash" do
           fake_output = StringIO.new(File.read("#{fixture_path}/outputs/file_with_iso-8859-1.txt"))
           Open3.stub(:popen3).and_yield(nil, nil, fake_output)
           expect { Movie.new(__FILE__) }.to_not raise_error
-        end
-      end
-
-      context "given a file with 5.1 audio" do
-        before(:all) do
-          fake_output = StringIO.new(File.read("#{fixture_path}/outputs/file_with_surround_sound.txt"))
-          Open3.stub(:popen3).and_yield(nil, nil, fake_output)
-          @movie = Movie.new(__FILE__)
-        end
-
-        it "should have 6 audio channels" do
-          @movie.audio_channels.should == 6
         end
       end
 
@@ -157,7 +135,7 @@ module FFMPEG
           @movie = Movie.new(__FILE__)
         end
 
-        it "should have nil audio channels" do
+        xit "should have nil audio channels" do
           @movie.audio_channels.should == nil
         end
       end
@@ -169,29 +147,8 @@ module FFMPEG
           @movie = Movie.new(__FILE__)
         end
 
-        it "should not be valid" do
+        xit "should not be valid" do
           @movie.should_not be_valid
-        end
-      end
-      
-      context "given a file with complex colorspace and decimal fps" do
-        before(:all) do
-          fake_output = StringIO.new(File.read("#{fixture_path}/outputs/file_with_complex_colorspace_and_decimal_fps.txt"))
-          Open3.stub(:popen3).and_yield(nil, nil, fake_output)
-          @movie = Movie.new(__FILE__)
-        end
-
-        it "should know the framerate" do
-          @movie.frame_rate.should == 23.98
-        end
-        
-        it "should know the colorspace" do
-          @movie.colorspace.should == "yuv420p(tv, bt709)"
-        end
-        
-        it "should know the width and height" do
-          @movie.width.should == 960
-          @movie.height.should == 540
         end
       end
 
@@ -220,10 +177,6 @@ module FFMPEG
           @movie.creation_time.should == Time.parse("2010-02-05 16:05:04")
         end
 
-        it "should parse video stream information" do
-          @movie.video_stream.should == "h264 (Main) (avc1 / 0x31637661), yuv420p, 640x480 [SAR 1:1 DAR 4:3], 371 kb/s, 16.75 fps, 600 tbr, 600 tbn, 1200 tbc"
-        end
-
         it "should know the video codec" do
           @movie.video_codec.should =~ /h264/
         end
@@ -247,10 +200,6 @@ module FFMPEG
 
         it "should know the framerate" do
           @movie.frame_rate.should == 16.75
-        end
-
-        it "should parse audio stream information" do
-          @movie.audio_stream.should == "aac (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 75 kb/s"
         end
 
         it "should know the audio codec" do

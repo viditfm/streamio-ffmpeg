@@ -188,10 +188,8 @@ module FFMPEG
         context "audio only" do
           before do
             @original_timeout = Transcoder.timeout
-            @original_ffmpeg_binary = FFMPEG.ffmpeg_binary
-
             Transcoder.timeout = 1
-            FFMPEG.ffmpeg_binary = "#{fixture_path}/bin/ffmpeg-audio-only"
+            FFMPEG.stub(:ffmpeg_binary).and_return("#{fixture_path}/bin/ffmpeg-audio-only")
           end
 
           it "should not fail when the timeout is exceeded" do
@@ -201,7 +199,6 @@ module FFMPEG
 
           after do
             Transcoder.timeout = @original_timeout
-            FFMPEG.ffmpeg_binary = @original_ffmpeg_binary
           end
         end
       end
