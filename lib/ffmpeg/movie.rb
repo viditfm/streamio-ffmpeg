@@ -103,6 +103,28 @@ module FFMPEG
       Transcoder.new(self, output_file, options.merge(screenshot: true), transcoder_options).run &block
     end
 
+    def detect_volume
+      volume_info = {}
+      volume_info[:volume_histogram] = []
+
+      output = run_filter_command(:audio, 'volumedetect')
+      output.scan(/\[Parsed_volumedetect_0 @ [^\]]+\] (.+)/).each do |match|
+        key, value = match.first.split(': ')
+
+        if key =~ /histogram_(\d+)db/
+          volume_info[:volume_histogram] << [-$1.to_i, value.to_i]
+        else
+          if value =~ /(\-?[\d\.]+)\ dB/
+            value = $1.to_f
+          else
+            value = value.to_i
+          end
+          volume_info[key.to_sym] = value
+        end
+      end
+
+      volume_info
+    end
     protected
     def aspect_from_dar
       return nil unless dar
@@ -128,5 +150,30 @@ module FFMPEG
     rescue ArgumentError
       output.force_encoding("ISO-8859-1")
     end
+
+    def run_filter_command(filter_type, filter_name, filter_args={})
+      filter_flag = case filter_type
+        when :audio then 'af'
+        when :video then 'vf'
+        else raise 'Unknown filter type'
+      end
+
+      filter_args_string = ''
+      filter_args.each_pair do |name, value|
+        filter_args_string << ':' unless filter_args_string.empty?
+        filter_args_string << "#{name}=#{value}"
+      end
+
+      # ffmpeg will output to stderr
+      command = "#{FFMPEG.ffmpeg_binary} -i #{Shellwords.escape(@path)}"
+      command << " -#{filter_flag} #{filter_name}"
+      command << "=#{filter_args_string}" unless filter_args_string.empty?
+      command << " -f null -"
+      output = Open3.popen3(command) { |stdin, stdout, stderr| stderr.read }
+      fix_encoding(output)
+
+      output
+    end
+
   end
 end

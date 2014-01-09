@@ -273,5 +273,24 @@ module FFMPEG
         movie.screenshot("#{tmp_path}/awesome.jpg", {seek_time: 2, dimensions: "640x480"}, preserve_aspect_ratio: :width)
       end
     end
+
+    context "detect_volume" do
+      before(:all) do
+        movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
+        @volume_info = movie.detect_volume
+      end
+
+      it "should know the mean volume" do
+        @volume_info[:mean_volume].should == -72.4
+      end
+
+      it "should know the max volume" do
+        @volume_info[:max_volume].should == -38.0
+      end
+
+      it "should know the volume histogram" do
+        @volume_info[:volume_histogram].should == [[-38, 6], [-39, 16], [-40, 18], [-41, 14], [-42, 10], [-43, 10], [-44, 38], [-45, 32], [-46, 22], [-47, 40], [-48, 30], [-49, 36], [-50, 26], [-51, 42], [-52, 366]]
+      end
+    end
   end
 end
