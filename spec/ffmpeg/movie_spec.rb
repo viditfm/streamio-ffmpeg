@@ -292,5 +292,51 @@ module FFMPEG
         @volume_info[:volume_histogram].should == [[-38, 6], [-39, 16], [-40, 18], [-41, 14], [-42, 10], [-43, 10], [-44, 38], [-45, 32], [-46, 22], [-47, 40], [-48, 30], [-49, 36], [-50, 26], [-51, 42], [-52, 366]]
       end
     end
+
+    context "audio_stats" do
+      it "should know the audio stats" do
+        movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
+        movie.audio_stats.should == {
+          :channels => [
+            { 
+              "DC offset" => 0.0, 
+              "Min level" => -0.012549,
+              "Max level" => 0.011783,
+              "Peak level dB" => -38.027573,
+              "RMS level dB" => -72.382469,
+              "RMS peak dB" => -56.948811,
+              "RMS trough dB" => -82.953017, 
+              "Crest factor" => 52.20893, 
+              "Flat factor" => 0.0, 
+              "Peak count" => 2.0
+            }, 
+            {
+              "DC offset" => 0.0, 
+              "Min level" => -0.012549, 
+              "Max level" => 0.011783, 
+              "Peak level dB" => -38.027573, 
+              "RMS level dB" => -72.382469, 
+              "RMS peak dB" => -56.948811, 
+              "RMS trough dB" => -82.953017, 
+              "Crest factor" => 52.20893, 
+              "Flat factor" => 0.0, 
+              "Peak count" => 2.0
+            }
+          ], 
+          :overall => {
+            "DC offset" => 0.0, 
+            "Min level" => -0.012549, 
+            "Max level" => 0.011783, 
+            "Peak level dB" => -38.027573, 
+            "RMS level dB" => -72.382469, 
+            "RMS peak dB" => -56.948811, 
+            "RMS trough dB" => -82.953017, 
+            "Flat factor" => 0.0, 
+            "Peak count" => 2.0, 
+            "Number of samples" => 329728.0
+          }
+        }
+      end
+    end
   end
 end

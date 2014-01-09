@@ -125,6 +125,32 @@ module FFMPEG
 
       volume_info
     end
+
+    def audio_stats
+      stats = {}
+      current_channel = nil
+
+      output = run_filter_command(:audio, 'astats')
+      output.scan(/\[Parsed_astats_0 @ [^\]]+\] (.+)/).each do |match|
+        key, value = match.first.split(': ')
+
+        if key == 'Channel'
+          channel_index = value.to_i - 1
+          stats[:channels] ||= []
+          stats[:channels][channel_index] = {}
+          current_channel = stats[:channels][channel_index]
+        elsif key == 'Overall'
+          stats[:overall] ||= {}
+          current_channel = stats[:overall]
+        else
+          value = (value == '-inf') ? -1.0/0.0 : value.to_f
+          current_channel[key] = value
+        end
+      end
+
+      stats
+    end
+
     protected
     def aspect_from_dar
       return nil unless dar
