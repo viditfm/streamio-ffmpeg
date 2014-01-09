@@ -33,10 +33,9 @@ module FFMPEG
         context "when ffmpeg freezes" do
           before do
             @original_timeout = Transcoder.timeout
-            @original_ffmpeg_binary = FFMPEG.ffmpeg_binary
 
             Transcoder.timeout = 1
-            FFMPEG.ffmpeg_binary = "#{fixture_path}/bin/ffmpeg-hanging"
+            FFMPEG.stub(:ffmpeg_binary) { "#{fixture_path}/bin/ffmpeg-hanging" }
           end
 
           it "should fail when the timeout is exceeded" do

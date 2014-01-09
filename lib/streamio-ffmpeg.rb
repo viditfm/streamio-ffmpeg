@@ -37,6 +37,7 @@ module FFMPEG
   # @return [String] the path you set
   def self.ffmpeg_binary=(bin)
     @ffmpeg_binary = bin
+    @ffprobe_binary = bin.nil? ? nil : File.join(File.dirname(bin), 'ffprobe')
   end
 
   # Get the path to the ffmpeg binary, defaulting to 'ffmpeg'
@@ -44,5 +45,12 @@ module FFMPEG
   # @return [String] the path to the ffmpeg binary
   def self.ffmpeg_binary
     @ffmpeg_binary || 'ffmpeg'
+  end
+
+  # Get the path to the ffprobe binary
+  #
+  # @return [String] the path to the ffprobe binary
+  def self.ffprobe_binary
+    @ffprobe_binary || 'ffprobe'
   end
 end

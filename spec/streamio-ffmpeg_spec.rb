@@ -37,4 +37,19 @@ describe FFMPEG do
       FFMPEG.ffmpeg_binary.should == new_binary
     end
   end
+
+  describe "ffprobe_binary" do
+    after(:each) do
+      FFMPEG.ffmpeg_binary = nil
+    end
+
+    it "should default to 'ffprobe'" do
+      FFMPEG.ffprobe_binary.should == 'ffprobe'
+    end
+
+    it "should default to the same location as ffmpeg_binary" do
+      FFMPEG.ffmpeg_binary = '/usr/local/bin/ffmpeg'
+      FFMPEG.ffprobe_binary.should == '/usr/local/bin/ffprobe'
+    end
+  end
 end
