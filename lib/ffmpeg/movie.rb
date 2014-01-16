@@ -151,6 +151,28 @@ module FFMPEG
       stats
     end
 
+    def detect_silence(options={})
+      silence_info = []
+
+      output = run_filter_command(:audio, 'silencedetect', options)
+      output.scan(/\[silencedetect @ [^\]]+\] ([^\[]+)/m).each do |match|
+        match = match.first
+        if match =~ /silence_start: ([\-\d\.]+)/
+          silence_info << { silence_start: $1.to_f }
+        elsif match =~ /silence_end: ([\-\d\.]+) \| silence_duration: ([\d\.]+)/
+          silence_info.last[:silence_end] = $1.to_f
+          silence_info.last[:silence_duration] = $2.to_f
+        end
+      end
+
+      if !silence_info.empty? && silence_info.last[:silence_end].nil?
+        silence_info.last[:silence_end] = duration
+        silence_info.last[:silence_duration] = silence_info.last[:silence_end] - silence_info.last[:silence_start]
+      end
+
+      silence_info
+    end
+
     protected
     def aspect_from_dar
       return nil unless dar

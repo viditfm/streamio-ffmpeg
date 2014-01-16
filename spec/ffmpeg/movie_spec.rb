@@ -293,6 +293,16 @@ module FFMPEG
       end
     end
 
+    context "detect_silence" do
+      before(:all) do
+        @movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
+      end
+
+      it "should know the mean volume" do
+        @movie.detect_silence(noise: '-0.0dB', duration: '3').should == []
+      end
+    end
+
     context "audio_stats" do
       it "should know the audio stats" do
         movie = Movie.new("#{fixture_path}/movies/awesome movie.mov")
