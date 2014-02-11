@@ -2,6 +2,7 @@ $LOAD_PATH.unshift File.dirname(__FILE__)
 
 require 'logger'
 require 'stringio'
+require 'net/http'
 
 require 'ffmpeg/version'
 require 'ffmpeg/errors'
