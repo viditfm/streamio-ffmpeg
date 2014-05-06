@@ -51,7 +51,7 @@ module FFMPEG
     end
 
     def convert_video_codec(value)
-      "-vcodec #{value}"
+      "-codec:v #{value}"
     end
 
     def convert_frame_rate(value)
@@ -67,7 +67,7 @@ module FFMPEG
     end
 
     def convert_audio_codec(value)
-      "-acodec #{value}"
+      "-codec:a #{value}"
     end
 
     def convert_audio_bitrate(value)
@@ -127,7 +127,15 @@ module FFMPEG
     end
 
     def convert_screenshot(value)
-      value ? "-vframes 1 -f image2" : ""
+      value ? "-frames:v 1 -f image2" : ""
+    end
+
+    def convert_video_qscale(value)
+      "-q:v #{value}"
+    end
+
+    def convert_audio_qscale(value)
+      "-q:a #{value}"
     end
 
     def convert_x264_vprofile(value)
