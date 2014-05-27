@@ -10,7 +10,7 @@ module FFMPEG
       end
 
       # ugly patch, handel custom flags properly
-      custom = send("convert_custom", self[:custom])
+      custom = send("convert_custom", self[:custom]).to_s
 
       # codecs should go before the presets so that the files will be matched successfully
       # all other parameters go after so that we can override whatever is in the preset
